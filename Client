@@ -1,0 +1,99 @@
+import socket
+
+
+# Function to check if the input IP address is valid
+def is_valid_ipv4_address(address):
+    try:
+        socket.inet_pton(socket.AF_INET, address)
+        return True
+    except socket.error:
+        return False
+
+
+# Function to check if the input port number is valid
+def is_valid_port(port):
+    return 1 <= port <= 65535
+
+
+# Prompt user for a valid IP address
+while True:
+    server_ip = input("Enter the server's IP address: ")
+    if is_valid_ipv4_address(server_ip):
+        break
+    else:
+        print("Wrong IP address. Please enter a valid IPv4 address.")
+
+# Prompt user for a valid port number
+while True:
+    try:
+        server_port = int(input("Enter the server's port number: "))
+        if is_valid_port(server_port):
+            break
+        else:
+            print("Invalid port number. Please enter a port number between 1 and 65535.")
+    except ValueError:
+        print("Invalid port number. Please enter a valid port number.")
+
+# Prompt user for their username
+client_username = input("Enter your username: ")
+
+# Connect to the server, retrying if necessary
+while True:
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        client_socket.settimeout(3)
+        client_socket.connect((server_ip, server_port))
+        client_socket.settimeout(None)
+        break
+    except socket.error:
+        print("Unable to connect. Please check the IP address and port number.")
+        # Repeat the process of asking for IP address and port number if the connection fails
+        while True:
+            server_ip = input("Enter the server's IP address: ")
+            if is_valid_ipv4_address(server_ip):
+                break
+            else:
+                print("Wrong IP address. Please enter a valid IPv4 address.")
+
+        while True:
+            try:
+                server_port = int(input("Enter the server's port number: "))
+                if is_valid_port(server_port):
+                    break
+                else:
+                    print("Invalid port number. Please enter a port number between 1 and 65535.")
+            except ValueError:
+                print("Invalid port number. Please enter a valid port number.")
+        continue
+
+# Exchange usernames with the server
+try:
+    client_socket.send(client_username.encode())
+    server_username = client_socket.recv(1024).decode()
+except socket.error as e:
+    print(f"Error receiving/sending data: {e}")
+    exit(1)
+
+# Chat loop
+while True:
+    # Send a message to the server
+    message = input("Enter your message: ")
+    try:
+        client_socket.send(message.encode())
+        if message.lower() == "end":
+            print("You have ended the conversation.")
+            break
+
+        # Receive a message from the server
+        response = client_socket.recv(1024).decode()
+        print(f"{server_username}: {response}")
+        if response.lower() == "end":
+            print("Server has ended the conversation.")
+            break
+    except socket.error as e:
+        print(f"Error receiving/sending data: {e}")
+        break
+
+# Close the socket
+client_socket.close()
