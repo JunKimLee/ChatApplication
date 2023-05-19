@@ -1,0 +1,88 @@
+import socket
+
+# Function to check if the input IP address is valid
+def is_valid_ipv4_address(address):
+    if address == "":
+        return True
+    try:
+        socket.inet_pton(socket.AF_INET, address)
+        return True
+    except socket.error:
+        return False
+
+# Function to check if the input port number is valid
+def is_valid_port(port):
+    return 1 <= port <= 65535
+
+# Prompt user for a valid IP address
+while True:
+    ip = input("Enter an IP address (or press Enter for localhost): ")
+    if is_valid_ipv4_address(ip):
+        break
+    else:
+        print("Wrong IP address. Please enter a valid IPv4 address.")
+
+# Set the IP address to localhost if the user pressed enter
+if ip == "":
+    ip = "127.0.0.1"
+
+# Prompt user for a valid port number
+while True:
+    try:
+        port = input("Enter a port number (or press Enter for default port): ")
+        if port == "":
+            port = 12345
+            break
+        port = int(port)
+        if is_valid_port(port):
+            break
+        else:
+            print("Invalid port number. Please enter a port number between 1 and 65535.")
+    except ValueError:
+        print("Invalid port number. Please enter a valid port number.")
+
+# Prompt user for their username
+server_username = input("Enter your username: ")
+
+# Set up the server socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind((ip, port))
+server_socket.listen(1)
+
+print(f"Server is listening on {ip}:{port}")
+
+# Accept an incoming connection from a client
+client_socket, client_address = server_socket.accept()
+
+# Exchange usernames with the client
+try:
+    client_username = client_socket.recv(1024).decode()
+    client_socket.send(server_username.encode())
+except socket.error as e:
+    print(f"Error receiving/sending data: {e}")
+    exit(1)
+
+# Chat loop
+while True:
+    try:
+        # Receive a message from the client
+        message = client_socket.recv(1024).decode()
+        if message.lower() == "end":
+            print("Client has ended the conversation.")
+            break
+        print(f"{client_username}: {message}")
+
+        # Send a message to the client
+        response = input("Enter your message: ")
+        client_socket.send(response.encode())
+        if response.lower() == "end":
+            print("You have ended the conversation.")
+            break
+    except socket.error as e:
+        print(f"Error receiving/sending data: {e}")
+        break
+
+# Close the sockets
+client_socket.close()
+server_socket.close()
